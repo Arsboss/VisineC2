@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Control Panel</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f2f2f2;
+    }
+    .container {
+      width: 80%;
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .server-card {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    h3 {
+      margin-top: 0;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .info-label {
+      font-weight: bold;
+    }
+    .info-value {
+      margin-left: 10px;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+    }
+    .status-icon {
+      margin-right: 5px;
+    }
+    .status-text {
+      font-weight: bold;
+    }
+    .button-container {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .button {
+      background-color: #4CAF50; /* Green */
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .button:hover {
+      background-color: #3e8e41;
+    }
+    .error-message {
+      color: red;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="serverContainer">
+    <!-- Server panels will be dynamically inserted here -->
+  </div>
+  <p id="errorMessage" class="error-message"></p>
+
+  <script>
+    const apiEndpoint = '/api/getsessions';
+    const container = document.getElementById('serverContainer');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Fetch server data from the API
+    async function fetchServers() {
+      try {
+        const response = await fetch(apiEndpoint);
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        // Parse server data
+        const servers = data.vms;
+        renderServers(servers);
+      } catch (error) {
+        errorMessage.textContent = `Failed to load server data: ${error.message}`;
+      }
+    }
+
+    // Render server cards
+    function renderServers(servers) {
+      container.innerHTML = ''; // Clear the container
+      Object.keys(servers).forEach(serverId => {
+        const server = servers[serverId];
+
+        const serverCard = document.createElement('div');
+        serverCard.className = 'server-card';
+
+        serverCard.innerHTML = `
+          <h3>Server ${serverId}</h3>
+          <div class="info-row">
+            <span class="info-label">Status:</span>
+            <span class="info-value status">
+              <span class="status-icon">✔️</span>
+              <span class="status-text" style="color: ${server.status === 'online' ? 'green' : 'red'};">${server.status}</span>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Last Keepalive Received:</span>
+            <span class="info-value">${server.lastKeepalive} seconds ago</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Connection:</span>
+            <span class="info-value">${server.conn}</span>
+          </div>
+          <div class="button-container">
+            <button class="button" onclick="handleAction(${serverId}, 'killswitch')">Killswitch</button>
+            <button class="button" onclick="handleAction(${serverId}, 'shutdown')">Timed shutdown (10 min)</button>
+            <button class="button" onclick="handleAction(${serverId}, 'killDesktop')">Kill Desktop</button>
+          </div>
+        `;
+
+        container.appendChild(serverCard);
+      });
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function handleAction(serverId, action) {
+      alert(`Action "${action}" triggered for Server ${serverId}`);
+      // Add logic to send action requests to your backend
+    }
+
+    setInterval(fetchServers,1000);
+  </script>
+</body>
+</html>
