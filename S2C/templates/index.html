@@ -130,8 +130,10 @@
           </div>
           <div class="button-container">
             <button class="button" onclick="handleAction(${serverId}, 'killswitch')">Killswitch</button>
-            <button class="button" onclick="handleAction(${serverId}, 'shutdown')">Timed shutdown (10 min)</button>
-            <button class="button" onclick="handleAction(${serverId}, 'killDesktop')">Kill Desktop</button>
+            <button class="button" onclick="handleAction(${serverId}, 'shutdown')">Timed shutdown (instant)</button>
+            <button class="button" onclick="handleAction(${serverId}, 'killDesktop')">Kill Desktop V2</button>
+            <button class="button" onclick="handleAction(${serverId}, 'killOpenBoard')">Kill OpenBoard</button>
+            <button class="button" onclick="handleAction(${serverId}, 'VOLUPMAX')">Volume Up 100%</button>
           </div>
         `;
 
@@ -145,7 +147,31 @@
 
     function handleAction(serverId, action) {
       alert(`Action "${action}" triggered for Server ${serverId}`);
-      // Add logic to send action requests to your backend
+      if (action == 'shutdown'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONSHUTDOWN|1`);
+        xhr.send();
+      }
+      else if(action == 'killDesktop'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLPLASMASHELL|1`);
+        xhr.send();
+      }
+      else if(action == 'VOLUPMAX'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONVOLUPMAX|1`);
+        xhr.send();
+      }
+      else if(action == 'killOpenBoard'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLOPENBOARD|1`);
+        xhr.send();
+      }
+      else if(action == 'killswitch'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLSWITCH|1`);
+        xhr.send();
+      }
     }
 
     setInterval(fetchServers,1000);
