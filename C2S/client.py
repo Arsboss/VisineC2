@@ -1,10 +1,11 @@
-import socket, time, re, random
+import socket, time, re, random, json
 import sys, os
-from threading import Thread
+from threading import Thread, Lock
 from subprocess import Popen, PIPE
 
 dsthost = '127.0.0.1'
 dstport = 12010
+cfgwritelock = Lock()
 sock = None
 TMSI = None
 PMSI = None
@@ -35,8 +36,25 @@ def udp_sendto_action(socket, host, port, action=''):
 
         TMSI = ssimsi
 
+        if str(ssmode) == "prod":
+            PMSI = ssimsi
+            with cfgwritelock:
+                with open("./data/cfg.txt", 'r+') as f:
+                    jsondata = json.load(f)
+                    jsondata['pmsi'] = str(PMSI)
+                    f.seek(0)
+                    f.truncate()
+                    f.write(json.dumps(jsondata))
+                    f.close()
+
         udp_sendto_nowait(socket, host, port, str(random.randint(100,999999999999)))
         print(f"Got allocation, c2 server is in {ssmode} mode, IMSI: {ssimsi}, required action: {required_action}")
+    elif action == "reinitial":
+        data, _ = socket.recvfrom(1024)
+        data.decode('utf-8')
+        stringdata = str(data)
+        if "success" in stringdata:
+            print("Realloc was successful! Client online")
         
 
 def action_handling(action):
@@ -48,7 +66,7 @@ def action_handling(action):
     elif actionpayload[0] == "KILLPLASMASHELL":
         time.sleep(int(actionpayload[1]))
         process = Popen(['pkill', 'plasmashell'], stdout=PIPE, stderr=PIPE)
-        time.sleep(2)
+        time.sleep(5)
         process = Popen(['plasmashell'], stdout=PIPE, stderr=PIPE)
     elif actionpayload[0] == "KILLOPENBOARD":
         time.sleep(int(actionpayload[1]))
@@ -73,6 +91,16 @@ def socket_listening(socket):
     
 if __name__ == "__main__":
     setup_socket(57758)
-    udp_sendto_action(sock, dsthost, dstport, action="initial")
+
+    with open("./data/cfg.txt", 'r') as f:
+        jsondata = json.load(f)
+        if str(jsondata['pmsi']) != "0":
+            TMSI = str(jsondata['pmsi'])
+            PMSI = str(jsondata['pmsi'])
+
+    if PMSI == None:
+        udp_sendto_action(sock, dsthost, dstport, action="initial")
+    else:
+        udp_sendto_action(sock, dsthost, dstport, action=f"reinitial {PMSI}")
     socket_listeting_thread = Thread(target=socket_listening, args=(sock,))
     socket_listeting_thread.start()

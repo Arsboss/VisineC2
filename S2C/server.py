@@ -4,25 +4,19 @@ import web
 import json
 import time
 
-mode = "dev"
+mode = "prod"
 sock = None
 writelock = Lock()
 TMSILIST = []
 CONNLIST = {}
-PMSILIST = {}
 
 RQ_INITIAL_ALLOC_RESPONSE = "{RAND} Server running in {MODE} mode, allocated {IMSI}, required {ACTION}"
-
-
-with open("./data/pmsi.txt") as f:
-    for line in f:
-        rest = line.split(":")
-        PMSILIST.update({rest[0]: rest[1]})
+RQ_REINITAL_RESPONSE = "{RAND} Server running in {MODE} mode, reallocation success {IMSI}, required {ACTION}"
   
 if mode == "dev":  
     print("Running on staging pmsi list will be ignored and new hosts will get TMSI assigned instead.")
 elif mode == "prod":
-    print("Loaded permament imsi list: ", PMSILIST)
+    print("Using permament host list")
 else:
     print("Invalid launch mode specified")
 
@@ -79,7 +73,49 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                         f.write(newjson)
                         f.close()
 
-            print(f"Processed and added new host, IMSI: {imsi}, conn {addr}")
+                print(f"Processed and added new host, IMSI: {imsi}, conn {addr}")
+            elif mode == "prod":
+                response = RQ_INITIAL_ALLOC_RESPONSE.format(RAND=str(random.randint(100,9999999999999)), MODE=mode, IMSI=str(imsi), ACTION=None)
+                TMSILIST.append(imsi)
+                socket.sendto(response.encode('utf-8'), addr)
+                data, addr = socket.recvfrom(1024)
+                recvmessage = data.decode('utf-8')
+                new_vm = {
+                    f"{imsi}": {
+                        "status": "online",
+                        "lastKeepalive": "0",
+                        "conn": f"{addr}"
+                    }
+                }
+
+                with open("./data/sessions.txt", 'r+') as f:
+                    with writelock:
+                        oldjson = json.load(f)
+                        f.seek(0)
+                        oldjson["vms"].update(new_vm)
+                        newjson = json.dumps(oldjson)
+                        f.write(newjson)
+                        f.close()
+
+                print(f"Processed and added new permament host, PMSI: {imsi}, conn {addr}")
+        elif "reinitial" in message:
+            reimsi = message[10:]
+            response = RQ_REINITAL_RESPONSE.format(RAND=str(random.randint(100,9999999999999)), MODE=mode, IMSI=str(reimsi), ACTION=None)
+            socket.sendto(response.encode('utf-8'), addr)
+            CONNLIST.update({addr: reimsi})
+
+            with open("./data/sessions.txt", 'r+') as f:
+                with writelock:
+                    oldjson = json.load(f)
+                    f.seek(0)
+                    oldjson["vms"][reimsi]['conn'] = str(addr)
+                    newjson = json.dumps(oldjson)
+                    f.write(newjson)
+                    f.close()
+
+            print(f"Processed re-inintal request for {reimsi}, conn {addr}")
+
+
             
 def udp_sendto_nowait(socket, host, port, message=''):
     socket.sendto(message.encode('utf-8'), (host, port))
