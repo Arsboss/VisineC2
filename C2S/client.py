@@ -62,18 +62,26 @@ def action_handling(action):
     actionpayload = action.split("|")
     if actionpayload[0] == "SHUTDOWN":
         time.sleep(int(actionpayload[1]))
-        process = Popen(['poweroff'], stdout=PIPE, stderr=PIPE)
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['poweroff'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "KILLPLASMASHELL":
         time.sleep(int(actionpayload[1]))
-        process = Popen(['pkill', 'plasmashell'], stdout=PIPE, stderr=PIPE)
-        time.sleep(5)
-        process = Popen(['plasmashell'], stdout=PIPE, stderr=PIPE)
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['pkill', 'plasmashell'], stdout=PIPE, stderr=PIPE)
+            time.sleep(5)
+            process = Popen(['plasmashell'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "KILLOPENBOARD":
         time.sleep(int(actionpayload[1]))
-        process = Popen(['pkill', 'OpenBoard'], stdout=PIPE, stderr=PIPE)
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['pkill', 'OpenBoard'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "VOLUPMAX":
         time.sleep(int(actionpayload[1]))
-        process = Popen(['amixer', '-D', 'pulse', 'sset', 'Master', '100%+'], stdout=PIPE, stderr=PIPE)
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['amixer', '-D', 'pulse', 'sset', 'Master', '100%+'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "KILLSWITCH":
         os.remove("/tmp/aautosave.py")
         sys.exit()
@@ -85,7 +93,8 @@ def socket_listening(socket):
         data = socket.recv(1024)
         print("Received data from server:", data.decode('utf-8'))
         if data.decode('utf-8')[:6] == "ACTION":
-            action_handling(data.decode('utf-8')[6:])
+            action_handling_thread = Thread(target=action_handling, args=(data.decode('utf-8')[6:],))
+            action_handling_thread.start()
 
         socket.sendto(bytes(f'keepalivedconn', encoding='utf-8'), (dsthost, dstport))
     

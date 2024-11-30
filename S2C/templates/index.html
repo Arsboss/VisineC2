@@ -179,6 +179,10 @@
           </div>
           <div class="button-container">
             <div class="button-container">
+              <input type="text" id="firstexecdelay" name="firstexecdelay" value="First execution delay (1s)">
+              <input type="text" id="execdelays" name="execdelays" value="Delay between executions (10s)">
+              <input type="text" id="repeats" name="repeats" value="Repeats (1)">
+              <button class="button refresh-button" onclick="fetchServers()">Refresh</button>
               <div class="dropdown">
                 <button class="button dropdown-button">Actions</button>
                 <div class="dropdown-content">
@@ -202,34 +206,37 @@
 
     function handleAction(serverId, action) {
       alert(`Action "${action}" triggered for Server ${serverId}`);
+      let fexecdelay = document.getElementById("firstexecdelay").value
+      let execdelays = document.getElementById("execdelays").value
+      let repeats = document.getElementById("repeats").value
       if (action == 'shutdown'){
         let xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONSHUTDOWN|1`);
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONSHUTDOWN|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'killDesktop'){
         let xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLPLASMASHELL|1`);
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLPLASMASHELL|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'VOLUPMAX'){
         let xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONVOLUPMAX|1`);
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONVOLUPMAX|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'killOpenBoard'){
         let xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLOPENBOARD|1`);
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLOPENBOARD|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'killswitch'){
         let xhr = new XMLHttpRequest();
-        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLSWITCH|1`);
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLSWITCH|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
     }
 
-    setInterval(fetchServers,1000);
+    fetchServers()
   </script>
 </body>
 </html>
