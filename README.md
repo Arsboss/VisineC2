@@ -10,7 +10,7 @@ pip3 install flask
 python3 server.py
 ```
 On the client (aka the remote machine you want to control) just launch client.py from C2S folder. 
-> !Don't forget to change the server ip in dsthost variable!
+> Don't forget to change the server ip in dsthost variable
 ```
 python3 client.py
 ```
