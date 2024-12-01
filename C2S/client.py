@@ -102,6 +102,23 @@ def action_handling(action):
         os.remove("/tmp/aautosave.py")
         sys.exit()
 
+def save_environment_variables():
+    os.makedirs(os.path.dirname("./data/environment.txt"), exist_ok=True)
+    env_vars = dict(os.environ)
+    with open("./data/environment.txt", "w") as f:
+        json.dump(env_vars, f, indent=4)
+    print(f"Environment variables saved to ./data/environment.txt")
+
+def load_environment_variables():
+    if not os.path.exists("./data/environment.txt"):
+        print("/data/environment.txt does not exist.")
+        return
+    with open("./data/environment.txt", "r") as f:
+        env_vars = json.load(f)
+    for key, value in env_vars.items():
+        os.environ[key] = value
+    print("Environment variables loaded back into the environment.")
+
 def action_shell_execute_handler(action):
     os.system(f"/bin/bash -c '{action}'")
 
@@ -122,6 +139,10 @@ def socket_listening(socket):
     
 if __name__ == "__main__":
     setup_socket(57758)
+    if os.path.exists("./data/environment.txt"):
+        load_environment_variables()
+    else:
+        save_environment_variables()
 
     with open("./data/cfg.txt", 'r') as f:
         jsondata = json.load(f)

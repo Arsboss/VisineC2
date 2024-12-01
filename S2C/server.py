@@ -135,7 +135,7 @@ def to_send_reader(socket):
                             except Exception as e:
                                 print("Exception sending data", e)
                         else:
-                            print(imsi, amsi)
+                            pass
             except Exception as e:
                 print(e)
             blank = {
