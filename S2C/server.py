@@ -3,6 +3,7 @@ from threading import Thread, Lock
 import web
 import json
 import time
+import re
 
 mode = "prod"
 sock = None
@@ -12,6 +13,8 @@ CONNLIST = {}
 
 RQ_INITIAL_ALLOC_RESPONSE = "{RAND} Server running in {MODE} mode, allocated {IMSI}, required {ACTION}"
 RQ_REINITAL_RESPONSE = "{RAND} Server running in {MODE} mode, reallocation success {IMSI}, required {ACTION}"
+
+regex_groups_connhostport = "\('(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',\s*(\d{1,5})\)"
   
 if mode == "dev":  
     print("Running on staging pmsi list will be ignored and new hosts will get TMSI assigned instead.")
@@ -45,7 +48,6 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                     f.write(json.dumps(jsondata))
                     f.truncate()
                     print(f"Processed keepalive to {addr}")
-                f.close()
         elif message == "initial":
             print(f"Processing initial request to {addr}")
             imsi = random.randint(100,999)
@@ -59,6 +61,7 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                 new_vm = {
                     f"{imsi}": {
                         "status": "online",
+                        "canonicalName": "Untitled",
                         "lastKeepalive": "0",
                         "conn": f"{addr}"
                     }
@@ -71,7 +74,6 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                         oldjson["vms"].update(new_vm)
                         newjson = json.dumps(oldjson)
                         f.write(newjson)
-                        f.close()
 
                 print(f"Processed and added new host, IMSI: {imsi}, conn {addr}")
             elif mode == "prod":
@@ -83,6 +85,7 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                 new_vm = {
                     f"{imsi}": {
                         "status": "online",
+                        "canonicalName": "Untitled",
                         "lastKeepalive": "0",
                         "conn": f"{addr}"
                     }
@@ -94,8 +97,9 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                         f.seek(0)
                         oldjson["vms"].update(new_vm)
                         newjson = json.dumps(oldjson)
+                        f.seek(0)
+                        f.truncate()
                         f.write(newjson)
-                        f.close()
 
                 print(f"Processed and added new permament host, PMSI: {imsi}, conn {addr}")
         elif "reinitial" in message:
@@ -110,10 +114,13 @@ def udp_server(socket, host='0.0.0.0', port=12010):
                     f.seek(0)
                     oldjson["vms"][reimsi]['conn'] = str(addr)
                     newjson = json.dumps(oldjson)
+                    f.seek(0)
+                    f.truncate()
                     f.write(newjson)
-                    f.close()
 
             print(f"Processed re-inintal request for {reimsi}, conn {addr}")
+        else:
+            print(f"Received unprocessable message from client: {message}")
 
 
             
@@ -146,7 +153,6 @@ def to_send_reader(socket):
             f.truncate(0)
             f.seek(0)
             f.write(json.dumps(blank))
-            f.close()
         time.sleep(1)
 
 def keepaliver(socket):
@@ -158,18 +164,37 @@ def keepaliver(socket):
 
 def keepaliver_increaser():
     while True:
-        with open("./data/sessions.txt", 'r+') as f:
-            with writelock:
-                jsondata = json.load(f)
-                for conn, amsi in jsondata.items():
-                    for iimsi, dkdata in amsi.items():
-                        keepalivedata = int(jsondata["vms"][iimsi]["lastKeepalive"])
-                        jsondata["vms"][iimsi]["lastKeepalive"] = str(keepalivedata + 1)
-                f.seek(0)
-                f.write(json.dumps(jsondata))
-                f.truncate()
-            time.sleep(1)
+        try:
+            with open("./data/sessions.txt", 'r+') as f:
+                with writelock:
+                    jsondata = json.load(f)
+                    for conn, amsi in jsondata.items():
+                        for iimsi, dkdata in amsi.items():
+                            keepalivedata = int(jsondata["vms"][iimsi]["lastKeepalive"])
+                            jsondata["vms"][iimsi]["lastKeepalive"] = str(keepalivedata + 1)
+                    f.seek(0)
+                    f.write(json.dumps(jsondata))
+                    f.truncate()
+                time.sleep(1)
+        except Exception as e:
+            print("Encountered an exception while increasing keepalive. Wrong sessions json")
 
+def connlist_loader():
+    with open("./data/sessions.txt", 'r') as f:
+        jsondata = json.load(f)
+        for conn, amsi in jsondata.items():
+            for iimsi, dkdata in amsi.items():
+                keepalivedata = int(jsondata["vms"][iimsi]["lastKeepalive"])
+                conndata = str(jsondata["vms"][iimsi]["conn"])
+
+                match = re.search(regex_groups_connhostport, conndata)
+                ip = match.group(1)
+                port = int(match.group(2))
+                reconn = (ip, port)
+                
+                if keepalivedata < 300:
+                    CONNLIST.update({reconn: iimsi})
+                    print(f"CONNLIST updated with {conndata} host")
 
 def start_web():
     www = web.Web()
@@ -177,6 +202,7 @@ def start_web():
 
 if __name__ == "__main__":
     setup_socket()
+    connlist_loader()
     udp_server_thread = Thread(target=udp_server, args=(sock,))
     udp_server_thread.start()
     web_server_thread = Thread(target=start_web)

