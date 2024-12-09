@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 dsthost = '127.0.0.1'
 dstport = 12010
 timenorecv = 0
-currstage = "idle"
+timenorecvretries = 0
 cfgwritelock = Lock()
 sock = None
 TMSI = None
@@ -210,12 +210,14 @@ def action_shell_execute_handler(action):
 
 def socket_listening(socket):
     global timenorecv
+    global timenorecvretries
     global dsthost
     global dstport
     while True:
         data = socket.recv(1024)
         print("Received data from server:", data.decode('utf-8'))
         timenorecv = 0
+        timenorecvretries = 0
 
         if os.path.exists("./data/fswitch.txt"):
             os.remove("./data/fswitch.txt")
@@ -240,22 +242,23 @@ def socket_listening(socket):
 
 def serverdeadlistener():
     global timenorecv
+    global timenorecvretries
     global stage
+    global sock
     while True:
         time.sleep(1)
         timenorecv += 1
-        """if timenorecv > 60 and stage == "initial":
-            print("Stuck in initial phase. Resending UDP")
+        if timenorecv > 180 and timenorecvretries <= 4:
+            print("Keepalive timeout occurred, resending UDP")
+            timenorecvretries += 1
             timenorecv = 0
-            udp_sendto_action(sock, dsthost, dstport, action="initial")
-            stage = "idle"
-        if timenorecv > 60 and stage == "reinitial":
-            print("Stuck in reinitial phase. Resending UDP")
+            resender = Thread(target=udp_sendto_action, args=(sock,dsthost,dstport,f"reinitial {PMSI}",))
+            resender.start()
+            resender2 = Thread(target=udp_sendto_nowait, args=(sock,dsthost,dstport,f"Reinit after timeout occurred: {timenorecvretries}",))
+            resender2.start()
+        elif timenorecv > 3600 and timenorecvretries >= 5:
             timenorecv = 0
-            udp_sendto_action(sock, dsthost, dstport, action=f"reinitial {PMSI}")
-            stage = "idle"
-        """
-        if timenorecv > 10800:
+            print("More than 5 tmouts occurred, killswitch function executed")
             serverdeadsuicide()
     
 if __name__ == "__main__":
